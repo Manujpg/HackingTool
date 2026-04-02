@@ -1,5 +1,5 @@
 
-<img width="1500" height="1500" alt="HackingTool IoT Projekt" src="https://github.com/user-attachments/assets/a1387e3a-ffb4-404e-b965-24eff85801fe" />
+<img width="700" height="700" alt="HackingTool IoT Projekt" src="https://github.com/user-attachments/assets/a1387e3a-ffb4-404e-b965-24eff85801fe" />
 
 # jamming_tool
 
