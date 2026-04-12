@@ -1,4 +1,4 @@
-# 📡 ELECTRONIC WARFARE v1.0 – Sub-GHz Research Platform
+# ELECTRONIC WARFARE v1.0 – Sub-GHz Research Platform
 
 <img width="1411" height="711" alt="image" src="https://github.com/user-attachments/assets/0a5667c2-4913-4d36-8717-791584edd7ca" />
 
@@ -9,7 +9,7 @@
 ---
 
 ## ⚠️ Legal & Ethical Disclaimer
-**FOR EDUCATIONAL AND RESEARCH PURPOSES ONLY.** This tool was developed exclusively as part of an academic IoT module at DHBW Stuttgart. The use of this hardware and software for unauthorized interference, intercepting third-party signals, or any illegal activities is strictly prohibited. The Core Development Unit assumes no liability for the misuse of this system.
+**FOR EDUCATIONAL AND RESEARCH PURPOSES ONLY.** This tool was developed exclusively as part of an academic IoT module at DHBW Stuttgart. The use of this hardware and software for unauthorized interference, intercepting third-party signals, or any illegal activities is strictly prohibited. Our Team assumes no liability for the misuse of this system.
 
 ---
 
