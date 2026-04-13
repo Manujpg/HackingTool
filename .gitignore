@@ -1,0 +1,9 @@
+frontend/linux/flutter/generated_plugin_registrant.cc
+frontend/linux/flutter/generated_plugin_registrant.h
+frontend/linux/flutter/generated_plugins.cmake
+frontend/windows/flutter/generated_plugin_registrant.h
+frontend/macos/Flutter/GeneratedPluginRegistrant.swift
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
