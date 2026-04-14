@@ -169,25 +169,27 @@ void handleGetData(String message) {
     if(equalsPos > 1){
       String command = message.substring(0, equalsPos);
       String valueStr = message.substring(equalsPos + 1);
-      float value = valueStr.toFloat();
-
-      if (value == 0.0 && valueStr != "0" && valueStr != "0.0") {
-        sendData("Error: Wert '" + valueStr + "' ist keine gültige Zahl!");
-        return; // Funktion abbrechen
-      }
+      
+      // Werte vorparsen (hilft bei der Verwendung)
+      float valueFloat = valueStr.toFloat();
+      int valueInt = valueStr.toInt();
+      bool valueBool = (valueStr == "1" || valueStr.equalsIgnoreCase("true"));
 
       if (command == "setFrequenz") {
-          ELECHOUSE_cc1101.setMHZ(value);
+          ELECHOUSE_cc1101.setMHZ(valueFloat);
           ELECHOUSE_cc1101.SetRx();
-          sendData("Info:Frequenz geändert auf " + String(value));
+          sendData("Info:Frequenz geändert auf " + String(valueFloat));
       }else if(command == "setModulation") {
-          ELECHOUSE_cc1101.setModulation((byte) value);
+          ELECHOUSE_cc1101.setModulation((byte) valueFloat);
           ELECHOUSE_cc1101.SetRx();
-          sendData("Info:Modulation geändert auf " + String(value));
+          sendData("Info:Modulation geändert auf " + String(valueFloat));
       }else if(command == "setRxBW") {
-          ELECHOUSE_cc1101.setRxBW(value);
+          ELECHOUSE_cc1101.setRxBW(valueFloat);
           ELECHOUSE_cc1101.SetRx();
-          sendData("Info:Modulation geändert auf " + String(value));
+          sendData("Info:RxBW geändert auf " + String(valueFloat));
+      }else if(command == "displayText") {
+          // Zeigt einfach den Text an, den man ab dem '=' mitgeschickt hat
+          Serial.println("DisplayText:" + valueStr);
       }else{
           sendData("Error:Befehl nicht erkannt " + message);
           return;
@@ -227,7 +229,7 @@ void loop() {
   }
   lastBleConnected = currentBleConnected;
 
-  if (currentBleConnected && millis() - lastBleTestSendMs >= 2000) {
+  if (currentBleConnected && millis() - lastBleTestSendMs >= 15000) {
     lastBleTestSendMs = millis();
     sendData("BLE_TEST:" + String(bleTestCounter++));
   }

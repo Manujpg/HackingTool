@@ -255,6 +255,16 @@ class BleService {
     await characteristic.write(payload, withoutResponse: true);
   }
 
+  // NEU: Hilfs-Funktion um Variablen einfach an den ESP32 zu senden
+  // Unterstützt String, int, double (float) und bool.
+  Future<void> sendVariable(String key, dynamic value) async {
+    String valueStr = value.toString();
+    if (value is bool) {
+      valueStr = value ? "1" : "0";
+    }
+    await sendCommand('$key=$valueStr');
+  }
+
   Future<void> dispose() async {
     await _notifySubscription?.cancel();
     await _stopScan();

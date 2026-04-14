@@ -3,7 +3,7 @@
 
 // Eigene UUIDs
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define CHARACTERISTIC_RX   "beb5483e-36e-4688-b7f5-ea07361b26a8"
+#define CHARACTERISTIC_RX   "beb5483e-36e1-4688-b7f5-ea07361b26a8" // <--- Hier fehlte die '1' in '36e1'
 #define CHARACTERISTIC_TX   "e3223119-9445-4e96-a4a1-85358c4046a2"
 
 static NimBLEServer* pServer = nullptr;

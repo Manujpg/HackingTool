@@ -12,6 +12,7 @@ class DeviceScreen extends StatefulWidget {
 
 class _DeviceScreenState extends State<DeviceScreen> {
   final BleService _bleService = BleService.instance;
+  final TextEditingController _testSendController = TextEditingController(); // Text Controller für das Senden
 
   @override
   void initState() {
@@ -22,6 +23,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
   @override
   void dispose() {
     _bleService.dispose();
+    _testSendController.dispose(); // Ressourcen freigeben
     super.dispose();
   }
 
@@ -511,6 +513,82 @@ class _DeviceScreenState extends State<DeviceScreen> {
                           fontSize: 9,
                           fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // --- NEU: CUSTOM COMMAND SENDER ---
+          Row(
+            children: [
+              const Icon(Icons.send_rounded, color: Color(0xFF00E3FD), size: 14),
+              const SizedBox(width: 8),
+              Text(
+                'TEST SENDING DATA',
+                style: GoogleFonts.spaceGrotesk(
+                  color: const Color(0xFF00E3FD),
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    border: Border.all(color: Colors.white10),
+                  ),
+                  child: TextField(
+                    controller: _testSendController,
+                    style: GoogleFonts.spaceGrotesk(color: const Color(0xFF00FF41), fontSize: 12),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Befehl (z.B. test=123 oder custom_cmd)',
+                      hintStyle: GoogleFonts.spaceGrotesk(color: Colors.white38, fontSize: 10),
+                    ),
+                    onSubmitted: (value) {
+                      if (value.isNotEmpty) {
+                        _bleService.sendCommand(value);
+                        _testSendController.clear();
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              TacticalHover(
+                onTap: () {
+                  final text = _testSendController.text.trim();
+                  if (text.isNotEmpty) {
+                    _bleService.sendCommand(text);
+                    _testSendController.clear();
+                  }
+                },
+                child: Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF00E3FD).withValues(alpha: 0.1),
+                    border: Border.all(color: const Color(0xFF00E3FD).withValues(alpha: 0.4)),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'SEND',
+                      style: GoogleFonts.spaceGrotesk(
+                        color: const Color(0xFF00E3FD),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
