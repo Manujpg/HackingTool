@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
-import '../widgets/tactical_hover.dart';
 
 class ScanScreen extends StatefulWidget {
-  const ScanScreen({super.key});
+  final Function(String hex, String freq) onSave;
+  const ScanScreen({super.key, required this.onSave});
 
   @override
   State<ScanScreen> createState() => _ScanScreenState();
@@ -12,234 +12,114 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late TextEditingController _freqController;
   double _currentFreq = 433.92;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+    _freqController = TextEditingController(text: _currentFreq.toStringAsFixed(2));
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _freqController.dispose();
     super.dispose();
+  }
+
+  void _updateFrequency(double newFreq) {
+    double cappedFreq = newFreq > 999.99 ? 999.99 : (newFreq < 0.0 ? 0.0 : newFreq);
+    setState(() {
+      _currentFreq = cappedFreq;
+      _freqController.text = _currentFreq.toStringAsFixed(2);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF131313),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          _buildFrequencySection(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  _buildScopeArea(),
-                  const SizedBox(height: 16),
-                  _buildMetricsRow(),
-                  const SizedBox(height: 16),
-                  _buildSnifferLog(),
-                ],
-              ),
-            ),
-          ),
+          _buildFrequencyInputBox(),
+          const SizedBox(height: 16),
+          _buildPresetRow(),
+          const SizedBox(height: 16),
+          _buildScopeArea(),
+          const SizedBox(height: 16),
+          _buildMetricsRow(),
+          const SizedBox(height: 16),
+          _buildSnifferLog(),
         ],
       ),
     );
   }
 
-  Widget _buildFrequencySection() {
+  Widget _buildFrequencyInputBox() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1B1B),
-        border: Border(bottom: BorderSide(color: const Color(0xFF00FF41).withValues(alpha: 0.1), width: 1)),
+        gradient: const LinearGradient(colors: [Color(0xFF252525), Color(0xFF1A1A1A)]),
+        border: Border.all(color: const Color(0xFF00FF41).withOpacity(0.3)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.settings_input_antenna, color: Color(0xFF84967E), size: 14),
-              const SizedBox(width: 8),
-              Text(
-                'FREQUENCY CONTROL',
-                style: GoogleFonts.spaceGrotesk(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 2,
-                  color: const Color(0xFF84967E),
-                ),
-              ),
-            ],
+          TextField(
+            controller: _freqController,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.spaceGrotesk(color: const Color(0xFF00FF41), fontSize: 54, fontWeight: FontWeight.bold),
+            decoration: const InputDecoration(border: InputBorder.none),
+            onSubmitted: (v) => _updateFrequency(double.tryParse(v.replaceAll(',', '.')) ?? _currentFreq),
           ),
-          const SizedBox(height: 16),
-          Center(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF353534),
-                border: Border(top: BorderSide(color: const Color(0xFF00FF41).withValues(alpha: 0.2), width: 2)),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    _currentFreq.toStringAsFixed(2),
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF00FF41),
-                      shadows: [const Shadow(color: Color(0xFF00FF41), blurRadius: 10)],
-                    ),
-                  ),
-                  Text(
-                    'MHz',
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 4,
-                      color: const Color(0xFF00FF41).withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _presetBtn("315.00 MHz", _currentFreq == 315.00),
-              _presetBtn("433.92 MHz", _currentFreq == 433.92),
-              _presetBtn("868.00 MHz", _currentFreq == 868.00),
-              _presetBtn("915.00 MHz", _currentFreq == 915.00),
-            ],
-          ),
+          const SizedBox(height: 4),
+          Text("M H z", style: GoogleFonts.spaceGrotesk(color: const Color(0xFF00FF41), letterSpacing: 8, fontWeight: FontWeight.w900)),
         ],
       ),
     );
   }
 
-  Widget _presetBtn(String label, bool active) {
-    return TacticalHover(
-      onTap: () {
-        setState(() {
-          _currentFreq = double.parse(label.split(' ')[0]);
-        });
-      },
-      scale: 1.1,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: active
-              ? const Color(0xFF00FF41).withValues(alpha: 0.2)
-              : const Color(0xFF2A2A2A),
-          border: Border.all(
-            color: active
-                ? const Color(0xFF00FF41).withValues(alpha: 0.4)
-                : Colors.white12,
-          ),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 10,
-            color: active ? const Color(0xFF00FF41) : const Color(0xFF84967E),
-          ),
-        ),
-      ),
+  Widget _buildPresetRow() {
+    return Wrap(
+      spacing: 10,
+      children: ["315.00 MHz", "433.92 MHz", "868.00 MHz", "915.00 MHz"].map((label) =>
+          GestureDetector(
+            onTap: () => _updateFrequency(double.parse(label.split(' ')[0])),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _currentFreq == double.parse(label.split(' ')[0]) ? const Color(0xFF00FF41).withOpacity(0.2) : const Color(0xFF222222),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Text(label, style: GoogleFonts.spaceGrotesk(fontSize: 10, color: const Color(0xFF84967E))),
+            ),
+          )
+      ).toList(),
     );
   }
 
   Widget _buildScopeArea() {
     return Container(
-      height: 200,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1B1B).withValues(alpha: 0.5),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
+      height: 180,
+      decoration: BoxDecoration(color: const Color(0xFF1A1A1A), border: Border.all(color: Colors.white10)),
       child: Stack(
         children: [
-          // Grid
-          CustomPaint(
-            painter: GridPainter(),
-            size: Size.infinite,
-          ),
-          // Status Labels
-          Positioned(
-            top: 12,
-            left: 12,
-            child: Row(
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF00FF41),
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Color(0xFF00FF41), blurRadius: 4)],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'LIVE_SCOPE_READY',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                    color: const Color(0xFF00FF41),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Positioned(
-            top: 28,
-            left: 12,
-            child: Text(
-              'SAMPLING: 2.4 MSPS',
-              style: TextStyle(fontFamily: 'monospace', fontSize: 8, color: Colors.white24),
-            ),
-          ),
-          // Waveform
           Align(
             alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
-              child: AnimatedBuilder(
-                animation: _controller,
-                builder: (context, child) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: List.generate(24, (index) {
-                      double randomHeight = 20 + math.Random().nextDouble() * 100;
-                      if (index == 12) randomHeight = 150 + math.Random().nextDouble() * 30;
-                      return Container(
-                        width: 4,
-                        height: randomHeight,
-                        decoration: BoxDecoration(
-                          color: index == 12 
-                            ? const Color(0xFF00FF41)
-                            : const Color(0xFF00FF41).withValues(alpha: index % 3 == 0 ? 0.4 : 0.1),
-                          boxShadow: index == 12 ? [
-                            const BoxShadow(color: Color(0xFF00FF41), blurRadius: 10),
-                          ] : null,
-                        ),
-                      );
-                    }),
-                  );
-                },
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) => Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: List.generate(24, (i) => Container(
+                  width: 4, height: 15 + math.Random().nextDouble() * 100,
+                  color: const Color(0xFF00FF41).withOpacity(0.3),
+                )),
               ),
             ),
           ),
+          const Positioned(top: 10, left: 10, child: Text("LIVE_SCOPE_READY", style: TextStyle(color: Color(0xFF00FF41), fontSize: 9))),
         ],
       ),
     );
@@ -258,30 +138,13 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
   Widget _metricBox(String label, String value, double progress, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1B1B),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFF1C1B1B), border: Border.all(color: Colors.white10)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(label, style: GoogleFonts.spaceGrotesk(fontSize: 8, color: const Color(0xFF84967E), fontWeight: FontWeight.bold, letterSpacing: 1)),
-              Text(value, style: GoogleFonts.spaceGrotesk(fontSize: 10, color: color, fontWeight: FontWeight.bold)),
-            ],
-          ),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(label, style: const TextStyle(fontSize: 8, color: Color(0xFF84967E))), Text(value, style: TextStyle(fontSize: 10, color: color))]),
           const SizedBox(height: 8),
-          Stack(
-            children: [
-              Container(height: 2, color: Colors.white12),
-              FractionallySizedBox(
-                widthFactor: progress,
-                child: Container(height: 2, color: color.withValues(alpha: 0.6)),
-              ),
-            ],
-          ),
+          LinearProgressIndicator(value: progress, color: color, backgroundColor: Colors.white10, minHeight: 2),
         ],
       ),
     );
@@ -289,102 +152,23 @@ class _ScanScreenState extends State<ScanScreen> with SingleTickerProviderStateM
 
   Widget _buildSnifferLog() {
     return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: const Color(0xFF353534),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFF222222), border: Border.all(color: Colors.white10)),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: const BoxDecoration(
-              color: Color(0xFF2A2A2A),
-              border: Border(bottom: BorderSide(color: Colors.white10)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('SNIFFER LOG',
-                    style: GoogleFonts.spaceGrotesk(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                        color: const Color(0xFF84967E))),
-                Text('PACKETS: 1,482',
-                    style: GoogleFonts.spaceGrotesk(
-                        fontSize: 8, color: const Color(0xFF00FF41))),
-              ],
-            ),
-          ),
+          Container(padding: const EdgeInsets.all(8), color: const Color(0xFF2A2A2A), child: const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("SNIFFER LOG", style: TextStyle(fontSize: 10)), Text("PACKETS: 1,482", style: TextStyle(fontSize: 8, color: Color(0xFF00FF41)))])),
           ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 4,
-            itemBuilder: (context, index) {
-              return TacticalHover(
-                enableNoise: false,
-                scale: 1.02,
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('SIGNAL_RECORDED_TO_LIBRARY'),
-                      backgroundColor: Color(0xFF00FF41),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Colors.white10)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Text('[14:22:01]',
-                          style: TextStyle(
-                              color: Colors.white24,
-                              fontSize: 9,
-                              fontFamily: 'monospace')),
-                      const SizedBox(width: 8),
-                      const Text('@433.92',
-                          style: TextStyle(
-                              color: Color(0xFF00E3FD),
-                              fontSize: 9,
-                              fontFamily: 'monospace')),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                          child: Text('DATA: 0xAF4B901C77...',
-                              style: TextStyle(
-                                  color: Color(0xFF00FF41),
-                                  fontSize: 9,
-                                  fontFamily: 'monospace'))),
-                      const Icon(Icons.save_alt,
-                          color: Color(0xFF84967E), size: 14),
-                    ],
-                  ),
-                ),
-              );
-            },
+            shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: 4,
+            itemBuilder: (context, index) => ListTile(
+              dense: true,
+              title: Text("0xAF4B901C7$index", style: const TextStyle(color: Color(0xFF00FF41), fontSize: 10, fontFamily: 'monospace')),
+              trailing: GestureDetector(
+                onTap: () => widget.onSave("0xAF4B901C7$index", "${_currentFreq.toStringAsFixed(2)} MHz"),
+                child: const Icon(Icons.save_alt, color: Color(0xFF84967E), size: 16),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
-}
-
-class GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    var paint = Paint()
-      ..color = const Color(0xFF00FF41).withValues(alpha: 0.05)
-      ..strokeWidth = 1;
-
-    for (var i = 1; i < 6; i++) {
-      double x = size.width * (i / 6);
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
