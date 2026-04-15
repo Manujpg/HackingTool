@@ -8,6 +8,10 @@
 #define GDO0_PIN 2
 #define GDO2_PIN 4
 
+// Modes in loop
+enum Mode {JAMMING, SCAN_SIGNAL, SCAN_FREQUENZ};
+Mode currentMode = SCAN_SIGNAL; //initale Mode
+
 // Variables for ISR
 volatile unsigned long lastChangeTime = 0;
 volatile unsigned long highDuration = 0;
