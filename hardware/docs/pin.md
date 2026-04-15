@@ -1,4 +1,4 @@
-### CC1101 to ESP32 Wiring Diagram
+## CC1101 to ESP32 Wiring
 
 | CC1101 Pin | ESP32 Pin (GPIO) | Common Name / Function |
 | :--- | :--- | :--- |
@@ -8,11 +8,11 @@
 | **SO (7)** | GPIO 19 | MISO (Master In Slave Out) |
 | **SCK (5)** | GPIO 18 | SCK (Serial Clock) |
 | **CSN (4)** | GPIO 5 | CS / SS (Chip Select) |
-| **GDO0 (3)** | GPIO 2 | GD0 (General Purpose / Interrupt) |
-| **GDO2 (8)** | GPIO 4 | GD2 (Optional Interrupt) |
+| **GDO0 (3)** | GPIO 2 | GDO0 (General Purpose / Interrupt) |
+| **GDO2 (8)** | GPIO 4 | GDO2 (Optional Interrupt) |
 
 
-https://lastminuteengineers.com/esp32-wroom-32-pinout-reference/
+Reference: https://lastminuteengineers.com/esp32-wroom-32-pinout-reference/
 
-![cc1101](image.png)
-![ESP32-WROOM-32](image-1.png)
+![CC1101 module pinout](images/cc1101-module-pinout.png)
+![ESP32-WROOM-32 pinout](images/esp32-wroom-32-pinout.png)
