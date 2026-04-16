@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:toastification/toastification.dart';
 import 'screens/scan_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/attack_screen.dart';
@@ -30,23 +31,25 @@ class RFScannerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ELECTRONIC WARFARE',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF131313),
-        primaryColor: const Color(0xFF00FF41),
-        textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF00FF41),
-          surface: Color(0xFF1C1B1B),
-          onSurface: Color(0xFFE5E2E1),
-          secondary: Color(0xFF00E3FD),
-          error: Color(0xFFC40015),
+    return ToastificationWrapper(
+      child: MaterialApp(
+        title: 'ELECTRONIC WARFARE',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: const Color(0xFF131313),
+          primaryColor: const Color(0xFF00FF41),
+          textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
+          colorScheme: const ColorScheme.dark(
+            primary: Color(0xFF00FF41),
+            surface: Color(0xFF1C1B1B),
+            onSurface: Color(0xFFE5E2E1),
+            secondary: Color(0xFF00E3FD),
+            error: Color(0xFFC40015),
+          ),
         ),
+        home: const MainNavigation(),
       ),
-      home: const MainNavigation(),
     );
   }
 }

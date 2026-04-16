@@ -145,14 +145,20 @@ void startJamming() {
 
 void stopJamming() {
   ELECHOUSE_cc1101.setSidle();
+  // Puffer leeren
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SFTX);
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SFRX);
+  delay(10);
 
   // Zurück auf Standard-Werte für Empfang
   setModulation(currentModulation);
+  setFreuquenz(currentFrequenz);
+  setRxBw(currentRxBw);
 
-  delay(10);
+  
   ELECHOUSE_cc1101.SetRx();
   enable_cc1101_isr();
-
+  
   currentMode = MODE_DEFAULT;
   sendData("Info: Jamming gestoppt");
 }
@@ -283,7 +289,7 @@ void handleGetData(String message) {
       setModulation((byte)valueFloat);
       ELECHOUSE_cc1101.SetRx();
       sendData("Info:Modulation geändert auf " + String(currentModulation));
-    } else if (command == "setRxBW") {
+    } else if (command == "setRxBw") {
       setRxBw(valueFloat);
       ELECHOUSE_cc1101.SetRx();
       sendData("Info:RxBW geändert auf " + String(currentRxBw));
