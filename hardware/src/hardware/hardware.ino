@@ -405,6 +405,12 @@ void loop() {
       message += ",";
       message += lowDuration;
       message += " ";
+      message += "f: ";
+      message +=  currentFrequenz;
+      message += ", m: ";
+      message +=  currentModulation;
+      message += ", r: ";
+      message +=  currentRxBw;
 
       sendData(message);
     }
