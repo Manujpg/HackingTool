@@ -3,29 +3,32 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 final db = FirebaseFirestore.instance;
 
 class SignalItem {
-  String? id;
+  String? id; // Nicht erforderlich laut User
   String name;
-  String hexData;
-  String frequency;
-  DateTime timestamp;
-  String? modulation;
-  String? rxBv;
-
+  final String hexData;
+  final String frequency;
+  final int? modulation; // Nicht erforderlich laut User (int)
+  final double? rxBw; // Nicht erforderlich laut User (double)
+  final int high;
+  final int low;
+  final DateTime timestamp;
 
   SignalItem({
     this.id,
     required this.name,
     required this.hexData,
     required this.frequency,
-    required  this.timestamp,
     this.modulation,
-    this.rxBv,
+    this.rxBw,
+    required this.high,
+    required this.low,
+    required this.timestamp,
   });
 
   factory SignalItem.fromFirestore(
-      DocumentSnapshot<Map<String, dynamic>> snapshot,
-      SnapshotOptions? options,
-      ) {
+    DocumentSnapshot<Map<String, dynamic>> snapshot,
+    SnapshotOptions? options,
+  ) {
     final data = snapshot.data();
     return SignalItem(
       id: data?['id'] ?? '',
@@ -33,8 +36,10 @@ class SignalItem {
       hexData: data?['hexData'] ?? '',
       frequency: data?['frequency'] ?? '',
       timestamp: (data?['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      modulation: data?['modulation'] ?? '',
-      rxBv: data?['rxBv'] ?? '',
+      modulation: data?['modulation'],
+      rxBw: (data?['rxBw'] as num?)?.toDouble(),
+      high: data?['high'] ?? 0,
+      low: data?['low'] ?? 0,
     );
   }
 
@@ -46,29 +51,39 @@ class SignalItem {
       "frequency": frequency,
       "timestamp": Timestamp.fromDate(timestamp),
       "modulation": modulation,
-      "rxBv": rxBv,
+      "rxBw": rxBw,
+      "high": high,
+      "low": low,
     };
   }
 }
 
 // Firestore Referenz mit Converter
 final ref = db.collection('Signals').withConverter(
-  fromFirestore: SignalItem.fromFirestore,
-  toFirestore: (SignalItem item, _) => item.toFirestore(),
-);
+      fromFirestore: SignalItem.fromFirestore,
+      toFirestore: (SignalItem item, _) => item.toFirestore(),
+    );
 
 void listener() {
   ref.snapshots().listen(
-        (event) => print("current data: $event"),
+    (event) => print("current data: $event"),
     onError: (error) => print("Listen failed: $error"),
   );
 }
 
-void addSignal(SignalItem item) {ref.doc(item.id).set(item).then((_) {
-  print("Cloud confirmation: Signal ${item.id} successfully written!");
-}).catchError((error) {
-  print("Firestore Error: $error");
-});
+// Stream fuer Live-Updates (NEU hinzugefuegt)
+Stream<List<SignalItem>> getSignalsStream() {
+  return ref.snapshots().map(
+        (snapshot) => snapshot.docs.map((doc) => doc.data()).toList(),
+      );
+}
+
+void addSignal(SignalItem item) {
+  ref.doc(item.id).set(item).then((_) {
+    print("Cloud confirmation: Signal ${item.id} successfully written!");
+  }).catchError((error) {
+    print("Firestore Error: $error");
+  });
 }
 
 /*
@@ -96,23 +111,25 @@ Future<List<DSM>> fetchDSM() async {
 
 void updateSignal(SignalItem item) {
   try {
-  addSignal(item);
-  print("Signal ${item.id} successfully updated!");
+    addSignal(item);
+    print("Signal ${item.id} successfully updated!");
   } catch (e) {
     print("Firestore Error: $e");
   }
 }
+
 void deleteSignal(SignalItem item) {
   ref.doc(item.id).delete().then(
         (doc) => print("Document deleted"),
-    onError: (e) => print("Error updating document $e"),
-  );
+        onError: (e) => print("Error updating document $e"),
+      );
 }
 
 Future<List<SignalItem>> fetchSignals() async {
   try {
     final querySnapshot = await ref.get();
-    List<SignalItem> signalList = querySnapshot.docs.map((doc) => doc.data()).toList();
+    List<SignalItem> signalList =
+        querySnapshot.docs.map((doc) => doc.data()).toList();
     print("Successfully fetched signals");
     return signalList;
   } catch (e) {
@@ -121,7 +138,7 @@ Future<List<SignalItem>> fetchSignals() async {
   }
 }
 
-// Static objects for testing
+// Static objects for testing (angepasst an neue Struktur)
 final List<SignalItem> testSignals = [
   SignalItem(
     id: 'test_01',
@@ -129,8 +146,10 @@ final List<SignalItem> testSignals = [
     hexData: 'A1B2C3D4',
     frequency: '433.92 MHz',
     timestamp: DateTime.now(),
-    modulation: 'OOK',
-    rxBv: '12V',
+    modulation: 1,
+    rxBw: 250.0,
+    high: 500,
+    low: 500,
   ),
   SignalItem(
     id: 'test_02',
@@ -138,8 +157,10 @@ final List<SignalItem> testSignals = [
     hexData: 'E5F6G7H8',
     frequency: '868.30 MHz',
     timestamp: DateTime.now(),
-    modulation: 'FSK',
-    rxBv: '3.3V',
+    modulation: 2,
+    rxBw: 125.0,
+    high: 1000,
+    low: 1000,
   ),
 ];
 
@@ -148,9 +169,10 @@ void sendTestSignals() {
     addSignal(signal);
   }
 }
-/*
-import 'package:cloud_firestore/cloud_firestore.dart';
 
+/*
+// HIER FOLGT DEIN ALTER AUSKOMMENTIERTER CODE
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 final db = FirebaseFirestore.instance;
 
@@ -209,19 +231,7 @@ void listener(){
 void addDSM(DSM dsm) {
   ref.doc(dsm.id).set(dsm);
 }
-/*
-void addDSM(DSM dsm) {
-  db.collection('Signals').doc(dsm.id).set({
-    'id': dsm.id,
-    'title': dsm.title,
-    'signals': dsm.signals,
-    'frequenz': dsm.frequenz,
-    'modulation': dsm.modulation,
-    'rxBv': dsm.rxBv
-  }).then((value) => print("DSM Added: ${dsm.id}"))
-    .catchError((error) => print("Failed to add DSM: $error"));
-}
-*/
+
 void updateDSM(DSM dsm) {
   addDSM(dsm);
 }
@@ -280,5 +290,4 @@ void sendTestDSMs() {
     addDSM(dsm);
   }
 }
-
 */
