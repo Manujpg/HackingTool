@@ -12,7 +12,8 @@
 //Modes for loop
 enum Mode { JAMMING,
             SCAN_SIGNAL,
-            SCAN_FREQUENZ };
+            SCAN_FREQUENZ,
+            SEND_SIGNAL };
 
 // default Settings
 #define MODE_DEFAULT SCAN_SIGNAL
@@ -33,7 +34,10 @@ bool lastBleConnected = false;
 unsigned long lastBleTestSendMs = 0;
 unsigned long bleTestCounter = 0;
 
-
+//Variables current Settings
+float currentFrequenz = 868.30;
+byte currentModulation = 0;
+float currentRxBw = 812.50;
 
 //Variables for Mode SCAN_FREQUENZ
 float scanFreqBegin;
@@ -50,9 +54,9 @@ void init_cc1101() {
   if (ELECHOUSE_cc1101.getCC1101()) {
     sendData("Info: Mit cc1101 verbunden");
     ELECHOUSE_cc1101.Init();
-    ELECHOUSE_cc1101.setMHZ(868.30);
-    ELECHOUSE_cc1101.setModulation(0);
-    ELECHOUSE_cc1101.setRxBW(812.50);  // Bandbreite etwas verengen für weniger Rauschen
+    setFreuquenz(868.30);
+    setModulation(0);
+    setRxBw(812.50);  // Bandbreite etwas verengen für weniger Rauschen
     enable_cc1101_isr();
 
     ELECHOUSE_cc1101.SpiWriteReg(CC1101_IOCFG0, 0x0D);
@@ -65,7 +69,6 @@ void init_cc1101() {
 }
 
 // ISR
-
 void ISR_GDO(void) {
   unsigned long now = micros();
   unsigned long duration = now - lastChangeTime;
@@ -90,10 +93,13 @@ void sendData(String d) {
 }
 
 void enable_cc1101_isr() {
-  ELECHOUSE_cc1101.SpiWriteReg(CC1101_IOCFG0, 0x0D);
   pinMode(GDO0_PIN, INPUT);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_IOCFG0, 0x0D);
+
   attachInterrupt(digitalPinToInterrupt(GDO0_PIN), ISR_GDO, CHANGE);
   // ELECHOUSE_cc1101.SpiWriteReg(CC1101_IOCFG0, 0x0D);
+
+  ELECHOUSE_cc1101.SetRx();
 }
 
 void disable_cc1101_isr() {
@@ -101,20 +107,34 @@ void disable_cc1101_isr() {
   // ELECHOUSE_cc1101.SpiWriteReg(CC1101_IOCFG0, 0x0D);
 }
 
+void setFreuquenz(float pFreq) {
+  currentFrequenz = pFreq;
+  ELECHOUSE_cc1101.setMHZ(pFreq);
+}
+
+void setModulation(byte pModulation) {
+  currentModulation = pModulation;
+  ELECHOUSE_cc1101.setModulation(pModulation);
+}
+
+void setRxBw(float pRxBw) {
+  currentRxBw = pRxBw;
+  ELECHOUSE_cc1101.setRxBW(currentRxBw);
+}
 
 void startJamming() {
   // 1. Interrupts und Empfang stoppen
   disable_cc1101_isr();
-  ELECHOUSE_cc1101.setSidle(); // Idle Modus
+  ELECHOUSE_cc1101.setSidle();  // Idle Modus
   yield();
 
   // 2. CC1101 für konstanten Träger konfigurieren
   // Wir schalten die Modulation aus (einfacher Träger)
-  ELECHOUSE_cc1101.setModulation(4); // 4 = CLEAN CWI (Continuous Wave)
-  
+  ELECHOUSE_cc1101.setModulation(4);  // 4 = CLEAN CWI (Continuous Wave)
+
   // PA_TABLE Einstellungen: Maximale Sendeleistung einstellen
   // (0xC0 ist oft das Maximum für CC1101)
-  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FREND0, 0x10); 
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_FREND0, 0x10);
 
   // 3. Den Chip in den Sende-Modus (TX) versetzen
   ELECHOUSE_cc1101.SetTx();
@@ -125,11 +145,17 @@ void startJamming() {
 
 void stopJamming() {
   ELECHOUSE_cc1101.setSidle();
-  
-  // Zurück auf Standard-Werte für Empfang
-  ELECHOUSE_cc1101.setModulation(0); // Wieder zurück auf ASK/OOK oder was du nutzt
-  
+  // Puffer leeren
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SFTX);
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SFRX);
   delay(10);
+
+  // Zurück auf Standard-Werte für Empfang
+  setModulation(currentModulation);
+  setFreuquenz(currentFrequenz);
+  setRxBw(currentRxBw);
+
+  
   ELECHOUSE_cc1101.SetRx();
   enable_cc1101_isr();
   
@@ -150,6 +176,8 @@ void startFreuquenzScanning(float pStartFreq, float pEndFreq, float pScanStep = 
 void stopFreuquenzScanning() {
   currentMode = MODE_DEFAULT;
   enable_cc1101_isr();
+  setFreuquenz(currentFrequenz);
+  ELECHOUSE_cc1101.SetRx();
 }
 
 void loopFrequenzScanning() {
@@ -163,7 +191,7 @@ void loopFrequenzScanning() {
   ELECHOUSE_cc1101.SetRx();
 
   // Dem Chip Zeit zum Einschwingen geben (sehr kurz)
-  delayMicroseconds(500);
+  delayMicroseconds(2000);
 
   int rssi = ELECHOUSE_cc1101.getRssi();
 
@@ -180,9 +208,52 @@ void loopFrequenzScanning() {
   }
 }
 
+void sendSignal(uint32_t code[], int codeLength) {
+  currentMode = SEND_SIGNAL;
+
+  disable_cc1101_isr();
+
+  // Konfiguration für manuelles Senden via GDO0
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_IOCFG0, 0x0D);
+  ELECHOUSE_cc1101.SpiWriteReg(CC1101_PKTCTRL0, 0x32);
+
+  pinMode(GDO0_PIN, OUTPUT);
+
+  // Aufruf der korrigierten startSending Funktion
+  startSending(code, codeLength);
+  pinMode(GDO0_PIN, INPUT);
+
+  currentMode = MODE_DEFAULT;
+  enable_cc1101_isr();
+}
+
+void startSending(uint32_t code[], int codeLength) {
+  ELECHOUSE_cc1101.SetTx();
+
+  for (int repeat = 0; repeat < 5; repeat++) {
+    for (int i = 0; i < codeLength; i++) {
+      if (i % 2 == 0) {
+        digitalWrite(GDO0_PIN, HIGH);  // Puls
+      } else {
+        digitalWrite(GDO0_PIN, LOW);  // Pause
+      }
+      delayMicroseconds(code[i]);  // Nutzt jetzt das korrekte Array
+    }
+    digitalWrite(GDO0_PIN, LOW);
+    delay(20);
+  }
+
+  ELECHOUSE_cc1101.setSidle();
+
+  // FIFOs leeren, um den Chip komplett zurückzusetzen
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SFTX);
+  ELECHOUSE_cc1101.SpiStrobe(CC1101_SFRX);
+  sendData("Info: Data send");
+}
+
 String getParam(String data, char separator, int index) {
   int found = 0;
-  int strIndex[] = {0, -1};
+  int strIndex[] = { 0, -1 };
   int maxIndex = data.length() - 1;
   for (int i = 0; i <= maxIndex && found <= index; i++) {
     if (data.charAt(i) == separator || i == maxIndex) {
@@ -211,17 +282,17 @@ void handleGetData(String message) {
     bool valueBool = (valueStr == "1" || valueStr.equalsIgnoreCase("true"));
 
     if (command == "setFrequenz") {
-      ELECHOUSE_cc1101.setMHZ(valueFloat);
+      setFreuquenz(valueFloat);
       ELECHOUSE_cc1101.SetRx();
-      sendData("Info:Frequenz geändert auf " + String(valueFloat));
+      sendData("Info:Frequenz geändert auf " + String(currentFrequenz));
     } else if (command == "setModulation") {
-      ELECHOUSE_cc1101.setModulation((byte)valueFloat);
+      setModulation((byte)valueFloat);
       ELECHOUSE_cc1101.SetRx();
-      sendData("Info:Modulation geändert auf " + String(valueFloat));
-    } else if (command == "setRxBW") {
-      ELECHOUSE_cc1101.setRxBW(valueFloat);
+      sendData("Info:Modulation geändert auf " + String(currentModulation));
+    } else if (command == "setRxBw") {
+      setRxBw(valueFloat);
       ELECHOUSE_cc1101.SetRx();
-      sendData("Info:RxBW geändert auf " + String(valueFloat));
+      sendData("Info:RxBW geändert auf " + String(currentRxBw));
     } else if (command == "displayText") {
       // Zeigt einfach den Text an, den man ab dem '=' mitgeschickt hat
       Serial.println("DisplayText:" + valueStr);
@@ -254,10 +325,39 @@ void handleGetData(String message) {
           sendData("Info: Scan gestartet (" + String(pStart) + "-" + String(pEnd) + " MHz)");
         }
       }
-    } else if (message == "stopScanningFrequenz") {    
+    } else if (message == "stopScanningFrequenz") {
       stopFreuquenzScanning();
-    } else if (message == "getMode") {    
+    } else if (message.startsWith("startSendData")) {
+      int startBracket = message.indexOf('[');
+      int endBracket = message.lastIndexOf(']');
+
+      if (startBracket != -1 && endBracket != -1) {
+        String params = message.substring(startBracket + 1, endBracket);
+
+        // Zähle Kommas, um die Anzahl der Elemente zu bestimmen
+        int count = 1;
+        for (int i = 0; i < params.length(); i++) {
+          if (params.charAt(i) == ',') count++;
+        }
+        // create Array
+        uint32_t* tempCode = new uint32_t[count];
+        // Werte parsen mit der vorhandenen getParam Funktion
+        for (int i = 0; i < count; i++) {
+          tempCode[i] = (uint32_t)getParam(params, ',', i).toInt();
+        }
+        // Funktion aufrufen
+        sendSignal(tempCode, count);
+        // WICHTIG: Speicher wieder freigeben
+        delete[] tempCode;
+      }
+    } else if (message == "getMode") {
       sendData("Mode: " + String(currentMode));
+    } else if (message == "getFrequenz") {
+      sendData("Frequenz: " + String(currentFrequenz));
+    } else if (message == "getModulation") {
+      sendData("Modulation: " + String(currentModulation));
+    } else if (message == "getRxBw") {
+      sendData("RxBw: " + String(currentRxBw));
     } else {
       sendData("Error:Befehl nicht erkannt ");
       return;
@@ -268,6 +368,7 @@ void handleGetData(String message) {
 
 void setup() {
   Serial.begin(115200);
+  Serial.setTimeout(50);
   init_cc1101();
   bleSetup();
   //start with initial Mode
@@ -310,6 +411,12 @@ void loop() {
       message += ",";
       message += lowDuration;
       message += " ";
+      message += "f: ";
+      message +=  currentFrequenz;
+      message += ", m: ";
+      message +=  currentModulation;
+      message += ", r: ";
+      message +=  currentRxBw;
 
       sendData(message);
     }

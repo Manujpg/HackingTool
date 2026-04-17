@@ -26,7 +26,7 @@ class _AttackScreenState extends State<AttackScreen> {
 
   // Jamming State
   bool _isJamming = false;
-  double _jamPower = 0.65;
+  double _currentJamFreq = 433.92;
   late TextEditingController _jamFreqController;
 
   // Replay State
@@ -35,7 +35,7 @@ class _AttackScreenState extends State<AttackScreen> {
   @override
   void initState() {
     super.initState();
-    _jamFreqController = TextEditingController(text: "433.92");
+    _jamFreqController = TextEditingController(text: _currentJamFreq.toStringAsFixed(2));
   }
 
   @override
@@ -44,9 +44,16 @@ class _AttackScreenState extends State<AttackScreen> {
     super.dispose();
   }
 
+  void _updateJamFrequency(double newFreq) {
+    double cappedFreq = newFreq > 999.99 ? 999.99 : (newFreq < 0.0 ? 0.0 : newFreq);
+    setState(() {
+      _currentJamFreq = cappedFreq;
+      _jamFreqController.text = _currentJamFreq.toStringAsFixed(2);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Wenn von außen ein Signal übergeben wurde, zwingen wir den Replay-Modus
     AttackMode currentMode = widget.activeSignal != null ? AttackMode.replay : _mode;
 
     return Column(
@@ -196,31 +203,19 @@ class _AttackScreenState extends State<AttackScreen> {
             children: [
               TextField(
                 controller: _jamFreqController,
+                readOnly: _isJamming, // <--- HIER: Blockiert die Eingabe während Jamming läuft
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 textAlign: TextAlign.center,
                 style: GoogleFonts.spaceGrotesk(color: const Color(0xFFC40015), fontSize: 54, fontWeight: FontWeight.bold, letterSpacing: -1, shadows: [Shadow(color: const Color(0xFFC40015).withOpacity(0.6), blurRadius: 12)]),
                 decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                onSubmitted: (v) => _updateJamFrequency(double.tryParse(v.replaceAll(',', '.')) ?? _currentJamFreq),
               ),
               const SizedBox(height: 8),
               Text("TARGET MHz", style: GoogleFonts.spaceGrotesk(color: const Color(0xFFC40015).withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 4)),
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(color: const Color(0xFF1C1B1B), border: Border.all(color: Colors.white.withOpacity(0.05))),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('OUTPUT_POWER: ${(_jamPower * 100).toInt()}%', style: GoogleFonts.spaceGrotesk(color: Colors.white, fontSize: 11)),
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(activeTrackColor: const Color(0xFFC40015), inactiveTrackColor: Colors.white10, thumbColor: const Color(0xFFC40015), trackHeight: 2),
-                child: Slider(value: _jamPower, onChanged: (v) => setState(() => _jamPower = v)),
-              ),
-            ],
-          ),
-        ),
+
         const SizedBox(height: 40),
         TacticalHover(
           onTap: () => setState(() => _isJamming = !_isJamming),
@@ -245,7 +240,6 @@ class _AttackScreenState extends State<AttackScreen> {
   // --- 3. REPLAY MODE (BLAU) ---
   Widget _buildReplayMode() {
     if (widget.activeSignal == null) {
-      // HIER IST DER FIX: Das Center-Widget zwingt die Column in die absolute Mitte!
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

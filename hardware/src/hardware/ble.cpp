@@ -136,7 +136,7 @@ void bleSendString(const String& msg) {
         pTxCharacteristic->setValue(msg.c_str());
         pTxCharacteristic->notify();
 
-        Serial.print("BLE gesendet: ");
-        Serial.println(msg);
+        // Serial.print("BLE gesendet: ");
+        // Serial.println(msg);
     }
 }
