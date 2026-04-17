@@ -95,7 +95,7 @@ class _MainNavigationState extends State<MainNavigation> {
 
   void _saveSignal(String hex, String freq, int mod, double rxBw, int high, int low) {
     SignalItem newSignal = SignalItem(
-      id: const Uuid().v4(),
+      id: hex,
       name: "SIG_${_savedSignals.length.toString().padLeft(3, '0')}",
       hexData: hex,
       frequency: freq,

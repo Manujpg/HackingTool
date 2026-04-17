@@ -3,12 +3,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 final db = FirebaseFirestore.instance;
 
 class SignalItem {
-  String? id; // Nicht erforderlich laut User
+  String? id;
   String name;
   final String hexData;
   final String frequency;
-  final int? modulation; // Nicht erforderlich laut User (int)
-  final double? rxBw; // Nicht erforderlich laut User (double)
+  final int? modulation;
+  final double? rxBw;
   final int high;
   final int low;
   final DateTime timestamp;
