@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:toastification/toastification.dart';
 import '../widgets/alert.dart';
+import '../model/signal.dart';
+import 'signal_repository.dart';
+
+import '../model/scan_freq.dart';
+import 'scan_freq_repository.dart';
 
 class BleMessageHandler {
   /// Verarbeitet eine eingehende BLE-Nachricht und zeigt entsprechende Toasts an.
@@ -36,20 +41,23 @@ class BleMessageHandler {
         );
         break;
       case "NEW_SIGNAL":
-        showToastMessage(
-          context: context,
-          title: "Neues Signal",
-          description: message.replaceFirst("newSignal:", "").trim(),
-          type: ToastificationType.success,
-        );
+        final rawData = message.replaceFirst("newSignal:", "").trim();
+        final signal = Signal.fromRawString(rawData);
+        SignalRepository.instance.addSignal(signal);
         break;
       case "FIND_SIGNAL":
-        showToastMessage(
-          context: context,
-          title: "Signal-Suche",
-          description: "Die Suche nach neuen Signalen wurde gestartet.",
-          type: ToastificationType.info,
-        );
+        final rawData = message.replaceFirst("findNewSignal:", "").trim();
+        if (rawData.isNotEmpty) {
+          final hit = ScanFreq.fromRawString(rawData);
+          ScanFreqRepository.instance.addHit(hit);
+        } else {
+          // showToastMessage(
+          //   context: context,
+          //   title: "Signal-Suche",
+          //   description: "Die Suche nach neuen Signalen wurde gestartet.",
+          //   type: ToastificationType.info,
+          // );
+        }
         break;
       default:
         // Normale Nachrichten lösen keinen Toast aus

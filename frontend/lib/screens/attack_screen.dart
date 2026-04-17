@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/tactical_hover.dart';
 import '../main.dart'; // Für das SignalItem
+import '../services/radio_service.dart';
+import '../model/signal.dart';
 
 enum AttackMode { selection, jamming, replay }
 
@@ -26,7 +28,6 @@ class _AttackScreenState extends State<AttackScreen> {
 
   // Jamming State
   bool _isJamming = false;
-  double _currentJamFreq = 433.92;
   late TextEditingController _jamFreqController;
 
   // Replay State
@@ -35,21 +36,31 @@ class _AttackScreenState extends State<AttackScreen> {
   @override
   void initState() {
     super.initState();
-    _jamFreqController = TextEditingController(text: _currentJamFreq.toStringAsFixed(2));
+    _jamFreqController = TextEditingController(text: RadioService.instance.frequency.value.toStringAsFixed(2));
+    
+    // Synchronisierung mit RadioService
+    RadioService.instance.frequency.addListener(_syncFrequency);
+  }
+
+  void _syncFrequency() {
+    if (mounted && !_isJamming) {
+      setState(() {
+        _jamFreqController.text = RadioService.instance.frequency.value.toStringAsFixed(2);
+      });
+    }
   }
 
   @override
   void dispose() {
+    RadioService.instance.frequency.removeListener(_syncFrequency);
     _jamFreqController.dispose();
     super.dispose();
   }
 
   void _updateJamFrequency(double newFreq) {
     double cappedFreq = newFreq > 999.99 ? 999.99 : (newFreq < 0.0 ? 0.0 : newFreq);
-    setState(() {
-      _currentJamFreq = cappedFreq;
-      _jamFreqController.text = _currentJamFreq.toStringAsFixed(2);
-    });
+    // Wir setzen den Wert direkt im RadioService, das triggert die Listener
+    RadioService.instance.setFrequency(cappedFreq);
   }
 
   @override
@@ -201,14 +212,27 @@ class _AttackScreenState extends State<AttackScreen> {
           ),
           child: Column(
             children: [
-              TextField(
-                controller: _jamFreqController,
-                readOnly: _isJamming, // <--- HIER: Blockiert die Eingabe während Jamming läuft
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                textAlign: TextAlign.center,
-                style: GoogleFonts.spaceGrotesk(color: const Color(0xFFC40015), fontSize: 54, fontWeight: FontWeight.bold, letterSpacing: -1, shadows: [Shadow(color: const Color(0xFFC40015).withOpacity(0.6), blurRadius: 12)]),
-                decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
-                onSubmitted: (v) => _updateJamFrequency(double.tryParse(v.replaceAll(',', '.')) ?? _currentJamFreq),
+              Focus(
+                onFocusChange: (hasFocus) {
+                  if (!hasFocus) {
+                    _updateJamFrequency(double.tryParse(_jamFreqController.text.replaceAll(',', '.')) ?? RadioService.instance.frequency.value);
+                  }
+                },
+                child: TextField(
+                  controller: _jamFreqController,
+                  readOnly: _isJamming,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.spaceGrotesk(
+                    color: const Color(0xFFC40015),
+                    fontSize: 54,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: -1,
+                    shadows: [Shadow(color: const Color(0xFFC40015).withOpacity(0.6), blurRadius: 12)],
+                  ),
+                  decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                  onSubmitted: (v) => _updateJamFrequency(double.tryParse(v.replaceAll(',', '.')) ?? RadioService.instance.frequency.value),
+                ),
               ),
               const SizedBox(height: 8),
               Text("TARGET MHz", style: GoogleFonts.spaceGrotesk(color: const Color(0xFFC40015).withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 4)),
@@ -218,7 +242,15 @@ class _AttackScreenState extends State<AttackScreen> {
 
         const SizedBox(height: 40),
         TacticalHover(
-          onTap: () => setState(() => _isJamming = !_isJamming),
+          onTap: () async {
+            setState(() => _isJamming = !_isJamming);
+            if (_isJamming) {
+              // Frequenz wurde bereits via _updateJamFrequency gesetzt
+              await RadioService.instance.startJamming();
+            } else {
+              await RadioService.instance.stopJamming();
+            }
+          },
           child: Container(
             height: 70,
             decoration: BoxDecoration(
@@ -283,11 +315,35 @@ class _AttackScreenState extends State<AttackScreen> {
         ),
         const SizedBox(height: 40),
         TacticalHover(
-          onTap: () {
+          onTap: () async {
+            if (_isReplaying) return;
             setState(() => _isReplaying = true);
-            Future.delayed(const Duration(seconds: 1), () {
+
+            try {
+              // 1. Hardware-Parameter synchronisieren
+              double? freq = double.tryParse(widget.activeSignal!.frequency.split(' ')[0]);
+              if (freq != null) {
+                // Frequenz setzen wir sicherheitshalber mit force, falls der User manuell am Rad gedreht hat
+                await RadioService.instance.setFrequency(freq, force: true);
+                await Future.delayed(const Duration(milliseconds: 100));
+              }
+              
+              // Modulation und RxBW nur senden, wenn sie wirklich abweichen (kein force)
+              await RadioService.instance.setModulation(widget.activeSignal!.modulation);
+              await RadioService.instance.setRxBandwidth(widget.activeSignal!.rxBw);
+              await Future.delayed(const Duration(milliseconds: 100));
+
+              // 2. RAW Puls-Sequenz senden
+              // Wir senden nur einmal, da der ESP32 intern bereits Wiederholungen (5x) durchführt
+              await RadioService.instance.sendSignal([
+                widget.activeSignal!.high,
+                widget.activeSignal!.low,
+              ]);
+            } catch (e) {
+              debugPrint("Replay transmission error: $e");
+            } finally {
               if (mounted) setState(() => _isReplaying = false);
-            });
+            }
           },
           child: Container(
             height: 70,

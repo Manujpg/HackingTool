@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 import '../widgets/tactical_hover.dart';
+import '../services/signal_repository.dart';
+import '../services/scan_freq_repository.dart';
+import '../model/signal.dart';
+import '../model/scan_freq.dart';
+import '../services/radio_service.dart';
 
 class ScanScreen extends StatefulWidget {
-  final Function(String hex, String freq) onSave;
+  final Function(String hex, String freq, int mod, double rxBw, int high, int low) onSave;
   const ScanScreen({super.key, required this.onSave});
 
   @override
@@ -55,16 +60,41 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _scopeController = AnimationController(vsync: this, duration: const Duration(seconds: 2))..repeat();
+    
+    // Initialisiere mit zentralem Wert
+    _currentFreq = RadioService.instance.frequency.value;
+    _modIndex = RadioService.instance.modulation.value;
+    _rxBwHigh = RadioService.instance.rxBandwidth.value > 100.0;
+    
     _freqController = TextEditingController(text: _currentFreq.toStringAsFixed(2));
 
     _radarController = AnimationController(vsync: this, duration: const Duration(seconds: 3));
     _minFreqCtrl = TextEditingController(text: "420.0");
     _maxFreqCtrl = TextEditingController(text: "430.0");
     _stepCtrl = TextEditingController(text: "1.0");
+
+    // Höre auf Änderungen vom RadioService
+    RadioService.instance.frequency.addListener(_handleRadioUpdate);
+    RadioService.instance.modulation.addListener(_handleRadioUpdate);
+    RadioService.instance.rxBandwidth.addListener(_handleRadioUpdate);
+  }
+
+  void _handleRadioUpdate() {
+    if (mounted) {
+      setState(() {
+        _currentFreq = RadioService.instance.frequency.value;
+        _freqController.text = _currentFreq.toStringAsFixed(2);
+        _modIndex = RadioService.instance.modulation.value;
+        _rxBwHigh = RadioService.instance.rxBandwidth.value > 100.0;
+      });
+    }
   }
 
   @override
   void dispose() {
+    RadioService.instance.frequency.removeListener(_handleRadioUpdate);
+    RadioService.instance.modulation.removeListener(_handleRadioUpdate);
+    RadioService.instance.rxBandwidth.removeListener(_handleRadioUpdate);
     _scopeController.dispose();
     _freqController.dispose();
     _radarController.dispose();
@@ -80,12 +110,17 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
       _currentFreq = cappedFreq;
       _freqController.text = _currentFreq.toStringAsFixed(2);
     });
+    // Sende neue Frequenz an den ESP32
+    RadioService.instance.setFrequency(cappedFreq);
   }
 
   void _toggleRadarMode() {
     setState(() {
       _isRadarMode = !_isRadarMode;
       if (!_isRadarMode) {
+        if (_isRadarSweeping) {
+          RadioService.instance.stopFrequencyScanning();
+        }
         _isRadarSweeping = false;
         _radarController.stop();
       }
@@ -96,9 +131,18 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
     setState(() {
       _isRadarSweeping = !_isRadarSweeping;
       if (_isRadarSweeping) {
+        // Liste der alten Treffer leeren für einen neuen Scan
+        ScanFreqRepository.instance.clear();
         _radarController.repeat();
+        
+        // Starte den Hardware-Scan am ESP32
+        final start = double.tryParse(_minFreqCtrl.text) ?? 420.0;
+        final end = double.tryParse(_maxFreqCtrl.text) ?? 430.0;
+        final step = double.tryParse(_stepCtrl.text) ?? 1.0;
+        RadioService.instance.startFrequencyScanning(start, end, step);
       } else {
         _radarController.stop();
+        RadioService.instance.stopFrequencyScanning();
       }
     });
   }
@@ -224,7 +268,10 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                   // Clickable Area für Modulation Change
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _modIndex = (_modIndex + 1) % _modulationsData.length),
+                    onTap: () {
+                      setState(() => _modIndex = (_modIndex + 1) % _modulationsData.length);
+                      RadioService.instance.setModulation(_modIndex);
+                    },
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -272,7 +319,11 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
                   // Clickable Area für RxBW Change
                   GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _rxBwHigh = !_rxBwHigh),
+                    onTap: () {
+                      setState(() => _rxBwHigh = !_rxBwHigh);
+                      // Sende typische CC1101 RxBW Werte (812.5 für High, 58.0 für Low als Beispiel)
+                      RadioService.instance.setRxBandwidth(_rxBwHigh ? 812.5 : 58.0);
+                    },
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -407,28 +458,54 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 24),
 
-              Container(
-                decoration: BoxDecoration(color: const Color(0xFF222222), border: Border.all(color: const Color(0xFF00E3FD).withOpacity(0.3))),
-                child: Column(
-                  children: [
-                    Container(padding: const EdgeInsets.all(8), color: const Color(0xFF00E3FD).withOpacity(0.1), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("INTERCEPTED SIGNALS", style: GoogleFonts.spaceGrotesk(fontSize: 10, color: const Color(0xFF00E3FD), fontWeight: FontWeight.bold)), Text("FOUND: 3", style: GoogleFonts.spaceGrotesk(fontSize: 8, color: Colors.white))])),
-                    ListView.builder(
-                      shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: 3,
-                      itemBuilder: (context, index) {
-                        List<String> mockFreqs = ["422.15 MHz", "426.00 MHz", "428.85 MHz"];
-                        return ListTile(
-                          dense: true,
-                          title: Text("0xRADAR_SIG_$index", style: const TextStyle(color: Colors.white, fontSize: 10, fontFamily: 'monospace')),
-                          subtitle: Text(mockFreqs[index], style: const TextStyle(color: Color(0xFF00E3FD), fontSize: 9)),
-                          trailing: GestureDetector(
-                            onTap: () => widget.onSave("0xRADAR_SIG_$index", mockFreqs[index]),
-                            child: const Icon(Icons.save_alt, color: Color(0xFF00E3FD), size: 16),
+              ValueListenableBuilder<int>(
+                valueListenable: ScanFreqRepository.instance.hitCount,
+                builder: (context, count, child) {
+                  final hits = ScanFreqRepository.instance.getAllHits();
+                  return Container(
+                    decoration: BoxDecoration(color: const Color(0xFF222222), border: Border.all(color: const Color(0xFF00E3FD).withOpacity(0.3))),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          color: const Color(0xFF00E3FD).withOpacity(0.1),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text("INTERCEPTED SIGNALS", style: GoogleFonts.spaceGrotesk(fontSize: 10, color: const Color(0xFF00E3FD), fontWeight: FontWeight.bold)),
+                              Text("FOUND: $count", style: GoogleFonts.spaceGrotesk(fontSize: 8, color: Colors.white)),
+                            ],
                           ),
-                        );
-                      },
+                        ),
+                        if (hits.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Text("NO RADAR HITS YET", style: GoogleFonts.spaceGrotesk(color: Colors.white24, fontSize: 10)),
+                          )
+                        else
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: hits.length > 15 ? 15 : hits.length,
+                            itemBuilder: (context, index) {
+                              // Neueste Treffer oben
+                              final hit = hits[hits.length - 1 - index];
+                              return ListTile(
+                                dense: true,
+                                leading: Icon(Icons.sensors, color: const Color(0xFF00E3FD).withOpacity(0.5), size: 14),
+                                title: Text("${hit.frequency.toStringAsFixed(2)} MHz", style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                subtitle: Text("RSSI: ${hit.rssi} dBm", style: TextStyle(color: hit.rssi > -70 ? const Color(0xFF00FF41) : Colors.white54, fontSize: 9)),
+                                trailing: Text(
+                                  "${hit.timestamp.hour}:${hit.timestamp.minute.toString().padLeft(2, '0')}:${hit.timestamp.second.toString().padLeft(2, '0')}",
+                                  style: const TextStyle(color: Colors.white24, fontSize: 8),
+                                ),
+                              );
+                            },
+                          ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
             ],
           ),
@@ -530,24 +607,66 @@ class _ScanScreenState extends State<ScanScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildSnifferLog() {
-    return Container(
-      decoration: BoxDecoration(color: const Color(0xFF222222), border: Border.all(color: Colors.white10)),
-      child: Column(
-        children: [
-          Container(padding: const EdgeInsets.all(8), color: const Color(0xFF2A2A2A), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text("SNIFFER LOG", style: GoogleFonts.spaceGrotesk(fontSize: 10)), Text("PACKETS: 1,482", style: GoogleFonts.spaceGrotesk(fontSize: 8, color: const Color(0xFF00FF41)))])),
-          ListView.builder(
-            shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: 4,
-            itemBuilder: (context, index) => ListTile(
-              dense: true,
-              title: Text("0xAF4B901C7$index", style: const TextStyle(color: Color(0xFF00FF41), fontSize: 10, fontFamily: 'monospace')),
-              trailing: GestureDetector(
-                onTap: () => widget.onSave("0xAF4B901C7$index", "${_currentFreq.toStringAsFixed(2)} MHz"),
-                child: const Icon(Icons.save_alt, color: Color(0xFF84967E), size: 16),
+    return ValueListenableBuilder<int>(
+      valueListenable: SignalRepository.instance.signalCount,
+      builder: (context, count, child) {
+        final signals = SignalRepository.instance.getAllSignals();
+
+        return Container(
+          decoration: BoxDecoration(color: const Color(0xFF222222), border: Border.all(color: Colors.white10)),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                color: const Color(0xFF2A2A2A),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("SNIFFER LOG", style: GoogleFonts.spaceGrotesk(fontSize: 10)),
+                    Text("PACKETS: $count", style: GoogleFonts.spaceGrotesk(fontSize: 8, color: const Color(0xFF00FF41))),
+                  ],
+                ),
               ),
-            ),
+              if (signals.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text("NO SIGNALS CAPTURED", style: GoogleFonts.spaceGrotesk(color: Colors.white24, fontSize: 10)),
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: signals.length > 10 ? 10 : signals.length, // Zeige max die letzten 10
+                  itemBuilder: (context, index) {
+                    // Neueste Signale oben
+                    final signal = signals[signals.length - 1 - index];
+                    final signalId = "0x${signal.hashCode.toRadixString(16).toUpperCase()}";
+                    
+                    return ListTile(
+                      dense: true,
+                      title: Text(signalId, style: const TextStyle(color: Color(0xFF00FF41), fontSize: 10, fontFamily: 'monospace')),
+                      subtitle: Text(
+                        "f: ${signal.frequenz.toStringAsFixed(2)} | h: ${signal.high.toInt()} | l: ${signal.low.toInt()}",
+                        style: const TextStyle(color: Colors.white54, fontSize: 8),
+                      ),
+                      trailing: GestureDetector(
+                        onTap: () => widget.onSave(
+                          signalId,
+                          "${signal.frequenz.toStringAsFixed(2)} MHz",
+                          signal.modulation,
+                          signal.rxBw,
+                          signal.high.toInt(),
+                          signal.low.toInt(),
+                        ),
+                        child: const Icon(Icons.save_alt, color: Color(0xFF84967E), size: 16),
+                      ),
+                    );
+                  },
+                ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

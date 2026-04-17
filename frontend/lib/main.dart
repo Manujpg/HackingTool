@@ -16,12 +16,20 @@ class SignalItem {
   String name;
   final String hexData;
   final String frequency;
+  final int modulation;
+  final double rxBw;
+  final int high;
+  final int low;
   final DateTime timestamp;
 
   SignalItem({
     required this.name,
     required this.hexData,
     required this.frequency,
+    required this.modulation,
+    required this.rxBw,
+    required this.high,
+    required this.low,
     required this.timestamp,
   });
 }
@@ -68,12 +76,16 @@ class _MainNavigationState extends State<MainNavigation> {
   // NEU: Hält das Signal, das gerade für den Replay ausgewählt wurde
   SignalItem? _activeReplaySignal;
 
-  void _saveSignal(String hex, String freq) {
+  void _saveSignal(String hex, String freq, int mod, double rxBw, int high, int low) {
     setState(() {
       _savedSignals.add(SignalItem(
         name: "SIG_${_savedSignals.length.toString().padLeft(3, '0')}",
         hexData: hex,
         frequency: freq,
+        modulation: mod,
+        rxBw: rxBw,
+        high: high,
+        low: low,
         timestamp: DateTime.now(),
       ));
     });
@@ -113,7 +125,7 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
-      ScanScreen(onSave: _saveSignal),
+      ScanScreen(onSave: (hex, freq, mod, rxBw, high, low) => _saveSignal(hex, freq, mod, rxBw, high, low)),
       AttackScreen(
         activeSignal: _activeReplaySignal,
         onGoToLibrary: _goToLibrary,
