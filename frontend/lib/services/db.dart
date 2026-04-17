@@ -13,7 +13,7 @@ class SignalItem {
 
 
   SignalItem({
-     this.id,
+    this.id,
     required this.name,
     required this.hexData,
     required this.frequency,
@@ -64,8 +64,11 @@ void listener() {
   );
 }
 
-void addSignal(SignalItem item) {
-  ref.doc(item.id).set(item);
+void addSignal(SignalItem item) {ref.doc(item.id).set(item).then((_) {
+  print("Cloud confirmation: Signal ${item.id} successfully written!");
+}).catchError((error) {
+  print("Firestore Error: $error");
+});
 }
 
 /*

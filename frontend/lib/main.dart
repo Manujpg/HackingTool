@@ -8,12 +8,16 @@ import 'screens/device_screen.dart';
 import 'widgets/tactical_hover.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+
 import 'services/db.dart';
-void async main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Automatically send test data on startup
   runApp(const RFScannerApp());
 }
 
@@ -87,6 +91,7 @@ class _MainNavigationState extends State<MainNavigation> {
     setState(() {
       _savedSignals.add(newSignal);
     });
+    addSignal(newSignal);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('SIGNAL_RECORDED_TO_LIBRARY', style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, color: Colors.black)),
