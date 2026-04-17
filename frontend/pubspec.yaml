@@ -37,6 +37,7 @@ dependencies:
   permission_handler: ^11.4.0
   cloud_firestore: ^6.3.0
   firebase_core: ^4.7.0
+  toastification: ^3.1.0
 
 dev_dependencies:
   flutter_test:
