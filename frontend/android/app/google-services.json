@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "106649070093",
+    "project_id": "hackingtool-5c3d0",
+    "storage_bucket": "hackingtool-5c3d0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:106649070093:android:a96361ab1cc3d390ccc344",
+        "android_client_info": {
+          "package_name": "com.example.jamming_tool"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBJcDiB4tmeQpR0J3qZGF-tLQQ0MECw-6Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
