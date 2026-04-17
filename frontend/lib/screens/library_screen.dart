@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/tactical_hover.dart';
 import '../main.dart'; // Wichtig für den Zugriff auf SignalItem
+import '../services/db.dart';
 
 class LibraryScreen extends StatefulWidget {
   final List<SignalItem> signals;

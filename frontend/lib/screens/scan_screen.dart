@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 import '../widgets/tactical_hover.dart';
 
+
+
 class ScanScreen extends StatefulWidget {
   final Function(String hex, String freq) onSave;
   const ScanScreen({super.key, required this.onSave});

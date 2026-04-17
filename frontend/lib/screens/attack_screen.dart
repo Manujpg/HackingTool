@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/tactical_hover.dart';
 import '../main.dart'; // Für das SignalItem
+import '../services/db.dart';
 
 enum AttackMode { selection, jamming, replay }
 

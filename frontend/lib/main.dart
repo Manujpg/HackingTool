@@ -6,12 +6,19 @@ import 'screens/library_screen.dart';
 import 'screens/attack_screen.dart';
 import 'screens/device_screen.dart';
 import 'widgets/tactical_hover.dart';
-
-void main() {
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'services/db.dart';
+void async main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const RFScannerApp());
 }
 
 // --- DATENMODELL ---
+/*
 class SignalItem {
   String name;
   final String hexData;
@@ -25,7 +32,7 @@ class SignalItem {
     required this.timestamp,
   });
 }
-
+*/
 class RFScannerApp extends StatelessWidget {
   const RFScannerApp({super.key});
 
@@ -69,13 +76,16 @@ class _MainNavigationState extends State<MainNavigation> {
   SignalItem? _activeReplaySignal;
 
   void _saveSignal(String hex, String freq) {
+    SignalItem newSignal = SignalItem(
+      id: 'SIG_${_savedSignals.length.toString().padLeft(3, '0')}',
+      name: "SIG_${_savedSignals.length.toString().padLeft(3, '0')}",
+      hexData: hex,
+      frequency: freq,
+      timestamp: DateTime.now(),
+    );
+
     setState(() {
-      _savedSignals.add(SignalItem(
-        name: "SIG_${_savedSignals.length.toString().padLeft(3, '0')}",
-        hexData: hex,
-        frequency: freq,
-        timestamp: DateTime.now(),
-      ));
+      _savedSignals.add(newSignal);
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

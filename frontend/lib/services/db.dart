@@ -1,5 +1,142 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+final db = FirebaseFirestore.instance;
+
+class SignalItem {
+  String? id;
+  String name;
+  String hexData;
+  String frequency;
+  DateTime timestamp;
+  String? modulation;
+  String? rxBv;
+
+
+  SignalItem({
+     this.id,
+    required this.name,
+    required this.hexData,
+    required this.frequency,
+    required  this.timestamp,
+    this.modulation,
+    this.rxBv,
+  });
+
+  factory SignalItem.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> snapshot,
+      SnapshotOptions? options,
+      ) {
+    final data = snapshot.data();
+    return SignalItem(
+      id: data?['id'] ?? '',
+      name: data?['name'] ?? '',
+      hexData: data?['hexData'] ?? '',
+      frequency: data?['frequency'] ?? '',
+      timestamp: (data?['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      modulation: data?['modulation'] ?? '',
+      rxBv: data?['rxBv'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      "id": id,
+      "name": name,
+      "hexData": hexData,
+      "frequency": frequency,
+      "timestamp": Timestamp.fromDate(timestamp),
+      "modulation": modulation,
+      "rxBv": rxBv,
+    };
+  }
+}
+
+// Firestore Referenz mit Converter
+final ref = db.collection('Signals').withConverter(
+  fromFirestore: SignalItem.fromFirestore,
+  toFirestore: (SignalItem item, _) => item.toFirestore(),
+);
+
+void listener() {
+  ref.snapshots().listen(
+        (event) => print("current data: $event"),
+    onError: (error) => print("Listen failed: $error"),
+  );
+}
+
+void addSignal(SignalItem item) {
+  ref.doc(item.id).set(item);
+}
+
+/*
+// Beibehaltene DSM Funktionen (auskommentiert)
+void addDSM(DSM dsm) {
+  ref.doc(dsm.id).set(dsm);
+}
+
+void updateDSM(DSM dsm) {
+  addDSM(dsm);
+}
+
+Future<List<DSM>> fetchDSM() async {
+  try {
+    final querySnapshot = await ref.get();
+    List<DSM> dsmList = querySnapshot.docs.map((doc) => doc.data()).toList();
+    print("Successfully completed");
+    return dsmList;
+  } catch (e) {
+    print("Error completing: $e");
+    return [];
+  }
+}
+*/
+
+void updateSignal(SignalItem item) {
+  addSignal(item);
+}
+
+Future<List<SignalItem>> fetchSignals() async {
+  try {
+    final querySnapshot = await ref.get();
+    List<SignalItem> signalList = querySnapshot.docs.map((doc) => doc.data()).toList();
+    print("Successfully fetched signals");
+    return signalList;
+  } catch (e) {
+    print("Error fetching: $e");
+    return [];
+  }
+}
+
+// Static objects for testing
+final List<SignalItem> testSignals = [
+  SignalItem(
+    id: 'test_01',
+    name: 'Garage Remote',
+    hexData: 'A1B2C3D4',
+    frequency: '433.92 MHz',
+    timestamp: DateTime.now(),
+    modulation: 'OOK',
+    rxBv: '12V',
+  ),
+  SignalItem(
+    id: 'test_02',
+    name: 'Weather Station',
+    hexData: 'E5F6G7H8',
+    frequency: '868.30 MHz',
+    timestamp: DateTime.now(),
+    modulation: 'FSK',
+    rxBv: '3.3V',
+  ),
+];
+
+void sendTestSignals() {
+  for (var signal in testSignals) {
+    addSignal(signal);
+  }
+}
+/*
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 final db = FirebaseFirestore.instance;
 
@@ -130,3 +267,4 @@ void sendTestDSMs() {
   }
 }
 
+*/
