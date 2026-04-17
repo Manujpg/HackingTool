@@ -148,7 +148,7 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
-      ScanScreen(onSave: _saveSignal),
+      ScanScreen(onSave: (hex, freq, mod, rxBw, high, low) => _saveSignal(hex, freq, mod, rxBw, high, low)),
       AttackScreen(
         activeSignal: _activeReplaySignal,
         onGoToLibrary: _goToLibrary,
