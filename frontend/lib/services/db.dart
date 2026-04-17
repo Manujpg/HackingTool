@@ -74,3 +74,59 @@ void addDSM(DSM dsm) {
 void updateDSM(DSM dsm) {
   addDSM(dsm);
 }
+
+//Hier sind alle DSM in einer Liste? Nicht ganz UseCase abgedeckt wrrscheinlich wird Stream/Listner diese Aufgabe erfüllen
+Future<List<DSM>> fetchDSM() async {
+  try {
+
+    final querySnapshot = await ref.get();
+
+    //mapped query in Liste
+    List<DSM> dsmList = querySnapshot.docs.map((doc) => doc.data()).toList();
+
+    print("Successfully completed");
+    return dsmList;
+
+  } catch (e) {
+    print("Error completing: $e");
+
+    return [];
+  }
+}
+
+
+// Static objects for testing
+final List<DSM> testDSMs = [
+  DSM(
+    id: 'test_signal_01',
+    title: 'Garage Remote',
+    signals: ['raw_01', 'raw_02'],
+    frequenz: '433.92 MHz',
+    modulation: 'OOK',
+    rxBv: '12V',
+  ),
+  DSM(
+    id: 'test_signal_02',
+    title: 'Weather Station',
+    signals: ['data_packet_A'],
+    frequenz: '868.30 MHz',
+    modulation: 'FSK',
+    rxBv: '3.3V',
+  ),
+  DSM(
+    id: 'test_signal_03',
+    title: 'Car Key Fob',
+    signals: ['lock', 'unlock', 'trunk'],
+    frequenz: '315.00 MHz',
+    modulation: 'ASK',
+    rxBv: '5V',
+  ),
+];
+
+// Helper function to send all test data
+void sendTestDSMs() {
+  for (var dsm in testDSMs) {
+    addDSM(dsm);
+  }
+}
+
