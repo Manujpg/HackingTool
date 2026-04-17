@@ -95,7 +95,18 @@ Future<List<DSM>> fetchDSM() async {
 */
 
 void updateSignal(SignalItem item) {
+  try {
   addSignal(item);
+  print("Signal ${item.id} successfully updated!");
+  } catch (e) {
+    print("Firestore Error: $e");
+  }
+}
+void deleteSignal(SignalItem item) {
+  ref.doc(item.id).delete().then(
+        (doc) => print("Document deleted"),
+    onError: (e) => print("Error updating document $e"),
+  );
 }
 
 Future<List<SignalItem>> fetchSignals() async {

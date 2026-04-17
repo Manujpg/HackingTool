@@ -8,6 +8,7 @@ import 'screens/device_screen.dart';
 import 'widgets/tactical_hover.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:uuid/uuid.dart';
 
 import 'services/db.dart';
 void main() async {
@@ -74,14 +75,27 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> {
   int _selectedIndex = 0;
-  final List<SignalItem> _savedSignals = [];
+  List<SignalItem> _savedSignals = [];
+  //macht es möglich asynchron die daten reinzuladen
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+  Future<void> _loadData() async {
 
+    final signals = await fetchSignals();
+
+    setState(() {
+      _savedSignals = signals;
+    });
+  }
   // NEU: Hält das Signal, das gerade für den Replay ausgewählt wurde
   SignalItem? _activeReplaySignal;
 
   void _saveSignal(String hex, String freq) {
     SignalItem newSignal = SignalItem(
-      id: 'SIG_${_savedSignals.length.toString().padLeft(3, '0')}',
+      id: const Uuid().v4(),
       name: "SIG_${_savedSignals.length.toString().padLeft(3, '0')}",
       hexData: hex,
       frequency: freq,
@@ -103,9 +117,11 @@ class _MainNavigationState extends State<MainNavigation> {
 
   void _renameSignal(int index, String newName) {
     setState(() => _savedSignals[index].name = newName);
+    updateSignal(_savedSignals[index]);
   }
 
   void _deleteSignal(int index) {
+    deleteSignal(_savedSignals[index]);
     setState(() => _savedSignals.removeAt(index));
   }
 
