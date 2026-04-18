@@ -221,7 +221,15 @@ class _AttackScreenState extends State<AttackScreen> {
 
         const SizedBox(height: 40),
         TacticalHover(
-          onTap: () => setState(() => _isJamming = !_isJamming),
+          onTap: () async {
+            setState(() => _isJamming = !_isJamming);
+            if (_isJamming) {
+              await RadioService.instance.setFrequency(_currentJamFreq, force: true);
+              await RadioService.instance.startJamming();
+            } else {
+              await RadioService.instance.stopJamming();
+            }
+          },
           child: Container(
             height: 70,
             decoration: BoxDecoration(
@@ -286,11 +294,37 @@ class _AttackScreenState extends State<AttackScreen> {
         ),
         const SizedBox(height: 40),
         TacticalHover(
-          onTap: () {
+          onTap: () async {
+            if (_isReplaying) return;
             setState(() => _isReplaying = true);
-            Future.delayed(const Duration(seconds: 1), () {
+
+            try {
+              // 1. Hardware-Parameter synchronisieren
+              double? freq = double.tryParse(widget.activeSignal!.frequency.split(' ')[0]);
+              if (freq != null) {
+                await RadioService.instance.setFrequency(freq, force: true);
+                await Future.delayed(const Duration(milliseconds: 100));
+              }
+
+              // Modulation und RxBW nur senden, wenn sie vorhanden sind
+              if (widget.activeSignal!.modulation != null) {
+                await RadioService.instance.setModulation(widget.activeSignal!.modulation);
+              }
+              if (widget.activeSignal!.rxBw != null) {
+                await RadioService.instance.setRxBandwidth(widget.activeSignal!.rxBw);
+              }
+              await Future.delayed(const Duration(milliseconds: 100));
+
+              // 2. RAW Puls-Sequenz senden
+              await RadioService.instance.sendSignal([
+                widget.activeSignal!.high,
+                widget.activeSignal!.low,
+              ]);
+            } catch (e) {
+              debugPrint("Replay transmission error: $e");
+            } finally {
               if (mounted) setState(() => _isReplaying = false);
-            });
+            }
           },
           child: Container(
             height: 70,

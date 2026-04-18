@@ -192,14 +192,27 @@ class BleService {
       }
 
       final services = await device.discoverServices();
+      if (kDebugMode) {
+        for (var s in services) {
+          print("Service found: ${s.uuid}");
+          for (var c in s.characteristics) {
+            print("  Char found: ${c.uuid} | Write: ${c.properties.write} | Notify: ${c.properties.notify}");
+          }
+        }
+      }
+
       final service = services.where((s) => s.uuid == _serviceUuid).firstOrNull;
       if (service == null) {
+        if (kDebugMode) print("ERROR: Service $_serviceUuid not found!");
         status.value = 'SERVICE_NOT_FOUND';
         return;
       }
 
       _rxCharacteristic = service.characteristics.where((c) => c.uuid == _rxUuid).firstOrNull;
       final txCharacteristic = service.characteristics.where((c) => c.uuid == _txUuid).firstOrNull;
+
+      if (_rxCharacteristic == null && kDebugMode) print("ERROR: RX Characteristic $_rxUuid not found!");
+      if (txCharacteristic == null && kDebugMode) print("ERROR: TX Characteristic $_txUuid not found!");
 
       if (txCharacteristic == null) {
         status.value = 'TX_CHAR_NOT_FOUND';

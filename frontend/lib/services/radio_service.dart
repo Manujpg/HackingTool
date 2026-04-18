@@ -21,14 +21,16 @@ class RadioService {
   }
 
   /// Setzt die Modulation (setModulation=x)
-  Future<void> setModulation(int modIndex, {bool force = false}) async {
+  Future<void> setModulation(int? modIndex, {bool force = false}) async {
+    if (modIndex == null) return;
     if (!force && modulation.value == modIndex) return;
     modulation.value = modIndex;
     await _ble.sendVariable("setModulation", modIndex);
   }
 
   /// Setzt die RX Bandbreite (setRxBw=xxx.xx)
-  Future<void> setRxBandwidth(double bw, {bool force = false}) async {
+  Future<void> setRxBandwidth(double? bw, {bool force = false}) async {
+    if (bw == null) return;
     if (!force && rxBandwidth.value == bw) return;
     rxBandwidth.value = bw;
     await _ble.sendVariable("setRxBw", bw);
